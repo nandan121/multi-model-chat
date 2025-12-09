@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Key, Server, Palette, Download, Upload, Trash2, Plus, Edit } from 'lucide-react';
+import { Settings, Key, Server, Palette, Download, Upload, Trash2, Plus, Edit, X } from 'lucide-react';
 import { AppSettings, LocalModelConfig } from '../types';
 import { SettingsService } from '../services/settings';
 import { LocalModelForm } from './LocalModelForm';
@@ -13,6 +13,9 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [showLocalModelForm, setShowLocalModelForm] = useState(false);
   const [editingModel, setEditingModel] = useState<LocalModelConfig | null>(null);
   const [importError, setImportError] = useState<string>('');
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [modelsToCreate, setModelsToCreate] = useState<LocalModelConfig[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string>('');
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -26,15 +29,64 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     setSettings(updated);
   };
 
+  const parseCommaSeparatedModelNames = (model: LocalModelConfig): LocalModelConfig[] => {
+    // Split by comma, trim whitespace, and filter out empty entries
+    const names = model.name.split(',').map(name => name.trim()).filter(name => name.length > 0);
+
+    if (names.length === 1) {
+      // Single model, return as-is
+      return [model];
+    }
+
+    // Multiple models, create array with same config but different names
+    return names.map(name => ({
+      ...model,
+      id: Math.random().toString(36).substring(2, 15), // New unique ID for each
+      name: name
+    }));
+  };
+
   const handleSaveLocalModel = (model: LocalModelConfig) => {
     if (editingModel) {
       SettingsService.updateLocalModel(model.id, model);
+      setSettings(SettingsService.getSettings());
+      setShowLocalModelForm(false);
+      setEditingModel(null);
     } else {
-      SettingsService.addLocalModel(model);
+      // Check if model name contains commas for bulk creation
+      const modelsToSave = parseCommaSeparatedModelNames(model);
+
+      if (modelsToSave.length > 1) {
+        // Show confirmation dialog for bulk creation
+        setModelsToCreate(modelsToSave);
+        setShowBulkConfirm(true);
+      } else {
+        // Single model creation
+        SettingsService.addLocalModel(modelsToSave[0]);
+        setSettings(SettingsService.getSettings());
+        setShowLocalModelForm(false);
+        setEditingModel(null);
+      }
     }
+  };
+
+  const handleConfirmBulkCreation = () => {
+    SettingsService.addLocalModels(modelsToCreate);
     setSettings(SettingsService.getSettings());
     setShowLocalModelForm(false);
     setEditingModel(null);
+    setShowBulkConfirm(false);
+    setSuccessMessage(`Successfully created ${modelsToCreate.length} models: ${modelsToCreate.map(m => m.name).join(', ')}`);
+
+    // Clear the success message after 5 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 5000);
+  };
+
+  const handleCancelBulkCreation = () => {
+    setShowBulkConfirm(false);
+    setModelsToCreate([]);
   };
 
   const handleDeleteLocalModel = (modelId: string) => {
@@ -212,6 +264,18 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
             {activeTab === 'local-models' && (
               <div className="space-y-6">
+                {successMessage && (
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md flex items-center justify-between">
+                    <span>{successMessage}</span>
+                    <button
+                      onClick={() => setSuccessMessage('')}
+                      className="text-green-700 hover:text-green-900"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium text-gray-900">Local Models</h3>
                   <button
@@ -233,6 +297,40 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                     }}
                     isEditing={!!editingModel}
                   />
+                )}
+
+                {/* Bulk Creation Confirmation Dialog */}
+                {showBulkConfirm && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Create Multiple Models</h3>
+                      <p className="text-gray-600 mb-4">
+                        You're about to create {modelsToCreate.length} models with the following names:
+                      </p>
+                      <ul className="list-disc pl-5 mb-6 space-y-1">
+                        {modelsToCreate.map((model, index) => (
+                          <li key={index} className="text-gray-700">{model.name}</li>
+                        ))}
+                      </ul>
+                      <p className="text-gray-600 mb-6">
+                        All models will share the same configuration except for their names.
+                      </p>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={handleCancelBulkCreation}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleConfirmBulkCreation}
+                          className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                        >
+                          Create {modelsToCreate.length} Models
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Local Model Test Component */}

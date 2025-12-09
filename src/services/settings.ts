@@ -64,6 +64,12 @@ export class SettingsService {
     return this.updateSettings({ localModels: updatedLocalModels });
   }
 
+  static addLocalModels(models: LocalModelConfig[]): AppSettings {
+    const settings = this.getSettings();
+    const updatedLocalModels = [...settings.localModels, ...models];
+    return this.updateSettings({ localModels: updatedLocalModels });
+  }
+
   static removeLocalModel(modelId: string): AppSettings {
     const settings = this.getSettings();
     const updatedLocalModels = settings.localModels.filter(model => model.id !== modelId);

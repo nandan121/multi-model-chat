@@ -79,6 +79,9 @@ export const LocalModelForm: React.FC<LocalModelFormProps> = ({
               placeholder="e.g., Local LLaMA 2"
               required
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Tip: Enter multiple names separated by commas to create several models at once
+            </p>
           </div>
 
           <div>
