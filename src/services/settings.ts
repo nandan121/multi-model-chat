@@ -47,6 +47,8 @@ export class SettingsService {
     const current = this.getSettings();
     const updated = { ...current, ...updates };
     this.saveSettings(updated);
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('settingsChanged'));
     return updated;
   }
 
@@ -78,6 +80,8 @@ export class SettingsService {
 
   static resetSettings(): AppSettings {
     this.saveSettings(DEFAULT_SETTINGS);
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('settingsChanged'));
     return DEFAULT_SETTINGS;
   }
 
@@ -95,6 +99,8 @@ export class SettingsService {
         localModels: imported.localModels || DEFAULT_LOCAL_MODELS
       };
       this.saveSettings(validated);
+      // Dispatch event to notify other components
+      window.dispatchEvent(new Event('settingsChanged'));
       return validated;
     } catch (error) {
       console.error('Error importing settings:', error);

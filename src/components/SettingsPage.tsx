@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Key, Server, Palette, Download, Upload, Trash2, Plus, Edit, X } from 'lucide-react';
 import { AppSettings, LocalModelConfig } from '../types';
 import { SettingsService } from '../services/settings';
@@ -16,6 +16,31 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [modelsToCreate, setModelsToCreate] = useState<LocalModelConfig[]>([]);
   const [successMessage, setSuccessMessage] = useState<string>('');
+
+  // Ref for the modal content to detect clicks outside
+  const modalContentRef = useRef<HTMLDivElement>(null);
+
+  // Handle escape key press to close modal
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [onClose]);
+
+  // Handle click outside modal to close it
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Check if click is outside the modal content
+    if (modalContentRef.current && !modalContentRef.current.contains(e.target as Node)) {
+      onClose();
+    }
+  };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -138,8 +163,14 @@ export const SettingsPage: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div
+        ref={modalContentRef}
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
